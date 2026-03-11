@@ -151,7 +151,7 @@ namespace Poker.Entities
         public static HandEvaluationResult Evaluate(Table table, PlayerHand hand)
         {
             var allCards = new Cards();
-            allCards.AddRange(hand.hand);
+            allCards.AddRange(hand.cards);
             allCards.AddRange(table.ShownCards);
 
             var combinations = CombinationHelper.GetAll5CardCombinations(allCards);

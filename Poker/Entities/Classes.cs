@@ -11,13 +11,13 @@ namespace Poker.Entities
     #region Interfaces
     public interface IHand
     {
-        Cards hand { get; set; }
+        Cards cards { get; set; }
         Combos currentCombo { get; set; }
     }
 
     public interface IPlayerAI
     {
-        PlayerAction DecideAction(GameState gameState,PlayerHand hand);
+        PlayerAction DecideAction(GameState gameState, PlayerState playerState);
     }
 
     #endregion
@@ -96,17 +96,24 @@ namespace Poker.Entities
 
         public int Count()
         {
-            return cards.Count;
+            return this.cards.Count;
         }
 
         public void Shuffle()
         {
-
+            for (int i = this.cards.Count - 1; i > 0; i--)
+            {
+                int j = Random.Shared.Next(0, i + 1);
+                (this.cards[i], this.cards[j]) = (this.cards[j], this.cards[i]);
+            }
         }
 
         public Card Draw()
         {
-            return new Card(Suit.Heart,Value.Ace);
+            var index = Random.Shared.Next(0, this.cards.Count);
+            var card = this.cards[index];
+            this.cards.RemoveAt(index);
+            return card;
         }
     }
 
@@ -127,17 +134,55 @@ namespace Poker.Entities
         public int BigBlind { get; set; } = smallBlind * 2;
     }
 
-    public class PlayerHand(Cards hand, Combos currentCombo) : IHand
+    public class PlayerHand(Cards cards, Combos currentCombo) : IHand
     {
-        public Cards hand { get; set; } = hand;
+        public Cards cards { get; set; } = cards;
         public Combos currentCombo { get; set; } = currentCombo;
     }
 
     public class AiPlayer : IPlayerAI
     {
-        public PlayerAction DecideAction(GameState gameState, PlayerHand hand)
+        public PlayerAction DecideAction(GameState gameState, PlayerState playerState)
         {
-            return PlayerAction.Fold();
+            var table = gameState.Table;
+
+            var result = PokerHandEvaluator.Evaluate(table, playerState.Hand);
+
+            var strength = result.Strength;
+
+            int amountToCall = table.CurrentBet;
+
+            // очень сильная рука
+            if (strength > 0.7)
+            {
+                return PlayerAction.Raise(table.MinRaise * 3);
+            }
+
+            // сильная рука
+            if (strength > 0.6)
+            {
+                if (strength < 0.65)
+                    return PlayerAction.Call();
+                else
+                    return PlayerAction.Raise(table.MinRaise * 2);
+            }
+
+            // средняя
+            if (strength > 0.4)
+            {
+                if (amountToCall == 0)
+                    return PlayerAction.Check();
+
+                return PlayerAction.Call();
+            }
+
+            // слабая
+            if (strength < 0.3 && amountToCall > table.BigBlind)
+            {
+                return PlayerAction.Fold();
+            }
+
+            return PlayerAction.Call();
         }
     }
 
@@ -146,37 +191,210 @@ namespace Poker.Entities
         public string Name { get; set; } = name ?? "MidBot" + Random.Shared.Next(100).ToString();
         public PlayerHand Hand { get; set; } = hand;
         public int Chips { get; set; } = chips;
+        public int CurrentBet { get; set; } = 0;
         public bool IsFolded { get; set; } = false;
         public bool IsAllIn { get; set; } = false;
-
+        public IPlayerAI Controller { get; set; } = Controller;
         public bool IsHuman => Controller == null;
     }
 
-    public class GameState(Deck deck, List<PlayerState> players, Table table)
+    public class GameState(Deck deck, List<PlayerState> players, Table table, int currentMainPlayerIndex)
     {
         public Deck Deck { get; set; } = deck;
         public List<PlayerState> Players { get; set; } = players;
         public Table Table { get; set; } = table;
-        public int CurrentPlayerIndex { get; set; }
+        public int CurrentMainPlayerIndex { get; set; } = currentMainPlayerIndex;
         public GamePhase Phase { get; set; }
+
+        public void PreFlop()
+        {
+            Phase = GamePhase.PreFlop;
+        }
+
+        public void Flop()
+        {
+            Phase = GamePhase.Flop;
+        }
+
+        public void Turn()
+        {
+            Phase = GamePhase.Turn;
+        }
+
+        public void River()
+        {
+            Phase = GamePhase.River;
+        }
+
+        public void Showdown()
+        {
+            Phase = GamePhase.Showdown;
+        }
     }
 
     public static class PokerGame
     {
-        public static void GameStart(string playerName, int AiAmount)
+        public static (bool, int) GameStart(string playerName, int AiAmount, int currentMainPlayerIndex)
         {
             var players = new List<PlayerState>();
+            var deck = new Deck();
+            var table = new Table(new Cards(), 100, 0);
             var humanPlayer = new PlayerState(new PlayerHand([], Combos.None), playerName);
             players.Add(humanPlayer);
 
             for (int i = 0; i < AiAmount; i++) 
             {
-                var AiPlayer = new PlayerState(hand: new PlayerHand([], Combos.None));
+                var AiPlayer = new PlayerState(hand: new PlayerHand([], Combos.None), Controller: new AiPlayer());
                 players.Add(AiPlayer);
             }
 
+            var gameState = new GameState(deck, players, table, currentMainPlayerIndex);
 
+            deck.Shuffle();
 
+            foreach (var player in players)
+            {
+                player.Hand.cards.Add(deck.Draw());
+                player.Hand.cards.Add(deck.Draw());
+            }
+
+            string? response = null;
+
+            while (response == null)
+            {
+                Console.WriteLine("Another round? Y/N");
+                response = Console.ReadLine();
+                if (response != null && response.ToUpper() == "Y")
+                {
+                    return (true, 0);
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return (false, humanPlayer.Chips);
+        }
+
+        private static void Betting(GameState state)
+        {
+            var players = state.Players;
+            var table = state.Table;
+
+            int playersActed = 0;
+            int lastPlayerActed = state.CurrentMainPlayerIndex;
+
+            while (true)
+            {
+                var player = players[lastPlayerActed];
+
+                if (!player.IsFolded && !player.IsAllIn)
+                {
+                    PlayerAction action;
+
+                    if (player.IsHuman)
+                    {
+                        action = null;//GetHumanAction(state, player);
+                    }
+                    else
+                    {
+                        action = player.Controller!.DecideAction(state, player);
+                    }
+
+                    ApplyAction(state, player, action);
+
+                    playersActed++;
+                }
+
+                if (IsBettingFinished(state, playersActed))
+                    break;
+
+                 lastPlayerActed++;
+            }
+
+            ResetPlayerBets(players);
+        }
+
+        private static bool IsBettingFinished(GameState state, int playersActed)
+        {
+            var activePlayers = state.Players
+                .Where(p => !p.IsFolded && !p.IsAllIn)
+                .ToList();
+
+            if (activePlayers.Count <= 1)
+                return true;
+
+            bool allEqual = activePlayers
+                .All(p => p.CurrentBet == state.Table.CurrentBet);
+
+            return allEqual && playersActed >= activePlayers.Count;
+        }
+
+        private static void ApplyAction(GameState state, PlayerState player, PlayerAction action)
+        {
+            var table = state.Table;
+
+            switch (action.Type)
+            {
+                case ActionType.Fold:
+                    player.IsFolded = true;
+                    break;
+
+                case ActionType.Check:
+                    break;
+
+                case ActionType.Call:
+                    {
+                        int amount = table.CurrentBet - player.CurrentBet;
+
+                        player.Chips -= amount;
+                        player.CurrentBet += amount;
+                        table.Pot += amount;
+
+                        break;
+                    }
+
+                case ActionType.Raise:
+                    {
+                        int raise = action.Amount;
+
+                        int total = table.CurrentBet + raise;
+                        int amount = total - player.CurrentBet;
+
+                        player.Chips -= amount;
+                        player.CurrentBet = total;
+
+                        table.CurrentBet = total;
+                        table.Pot += amount;
+
+                        break;
+                    }
+
+                case ActionType.AllIn:
+                    {
+                        int amount = player.Chips;
+
+                        player.CurrentBet += amount;
+                        table.Pot += amount;
+
+                        player.Chips = 0;
+                        player.IsAllIn = true;
+
+                        if (player.CurrentBet > table.CurrentBet)
+                            table.CurrentBet = player.CurrentBet;
+
+                        break;
+                    }
+            }
+        }
+
+        private static void ResetPlayerBets(List<PlayerState> players)
+        {
+            foreach (var player in players)
+            {
+                player.CurrentBet = 0;
+            }
         }
     }
 
