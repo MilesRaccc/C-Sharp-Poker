@@ -27,7 +27,8 @@
 
     public enum Combos
     {
-        High_Card = 1,
+        None,
+        High_Card,
         Pair,
         Two_Pair,
         Set,
