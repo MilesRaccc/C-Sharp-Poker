@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Cards = System.Collections.Generic.List<Poker.Entities.Card>;
+//using Cards = System.Collections.Generic.List<Poker.Entities.Card>;
 
 namespace Poker.Entities
 {
@@ -87,9 +87,14 @@ namespace Poker.Entities
         /// <param name="cards">List of <see cref="Card"/> to check for match</param>
         /// <param name="isLowAce">If match found - returns, if the Ace in combination on the low end.</param>
         /// <returns>Is there a match</returns>
-        public static bool IsStraight(Cards cards, out bool isLowAce)
+        public static bool IsStraight(List<Card> cards, out bool isLowAce)
         {
             isLowAce = false;
+
+            if (cards == null)
+            {
+                return false;
+            }
 
             var values = cards.Select(card => (int)card.Value).Distinct().ToList();
 
@@ -205,7 +210,6 @@ namespace Poker.Entities
 
             var ordered = cards.OrderBy(card => (int)card.Value).ToList();
             var values = ordered.GroupBy(card => card.Value).ToList();
-
             bool isFlush = ordered.GroupBy(card => card.Suit).Count() == 1;
             bool isStraight = CombinationHelper.IsStraight(ordered, out bool isLowAce);
 

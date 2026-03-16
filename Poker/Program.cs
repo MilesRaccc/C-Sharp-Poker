@@ -1,42 +1,44 @@
-﻿using Poker.Entities;
+﻿using System.Text;
+using Poker.Entities;
 
 Deck deck = new Deck();
+Console.OutputEncoding = Encoding.UTF8;
 
 #region Test
 
-//Console.WriteLine(deck.ToString());
-//Console.WriteLine(deck.Count());
-//Console.WriteLine();
+Console.WriteLine(deck.ToString());
+Console.WriteLine(deck.Count());
+Console.WriteLine();
 
-//var cards = new List<Card>
-//{
-//    new Card(Suit.Heart, Value.Ace),
-//    new Card(Suit.Spade, Value.Queen),
-//    new Card(Suit.Heart, Value.King),
-//    new Card(Suit.Spade, Value.Two),
-//    new Card(Suit.Heart, Value.Ten),
-//    new Card(Suit.Spade, Value.Eight),
-//    new Card(Suit.Diamond, Value.Eight)
-//};
-//var combinations = CombinationHelper.GetAll5CardCombinations(cards).ToList();
-//Console.WriteLine("Количество Комбинаций: " + combinations.Count); // Должно быть 21
-//Console.WriteLine();
-//Console.WriteLine("Список комбинаций:");
-//foreach (var combo in combinations)
-//{
-//    Console.WriteLine(string.Join(",", combo));
-//}
-//Console.WriteLine();
+var cards = new Cards
+{
+    new Card(Suit.Heart, Value.Ace),
+    new Card(Suit.Spade, Value.Queen),
+    new Card(Suit.Heart, Value.King),
+    new Card(Suit.Spade, Value.Two),
+    new Card(Suit.Heart, Value.Ten),
+    new Card(Suit.Spade, Value.Eight),
+    new Card(Suit.Diamond, Value.Eight)
+};
+var combinations = CombinationHelper.GetAll5CardCombinations(cards).ToList();
+Console.WriteLine("Количество Комбинаций: " + combinations.Count); // Должно быть 21
+Console.WriteLine();
+Console.WriteLine("Список комбинаций:");
+foreach (var combo in combinations)
+{
+    Console.WriteLine(string.Join(" ", combo));
+}
+Console.WriteLine();
 
-//Console.WriteLine("Лучшая комбинация:");
-//Console.WriteLine(string.Join(",", PokerHandEvaluator.Evaluate(cards).Cards));
-//Console.WriteLine("Сила комбинации:");
-//Console.WriteLine(PokerHandEvaluator.Evaluate(cards).Strength);
-//Console.WriteLine();
-//Console.ReadLine();
+Console.WriteLine("Лучшая комбинация:");
+Console.WriteLine(PokerHandEvaluator.Evaluate(cards).Cards.ToString());
+Console.WriteLine("Сила комбинации:");
+Console.WriteLine(PokerHandEvaluator.Evaluate(cards).Strength);
+Console.WriteLine();
+Console.ReadLine();
 
 #endregion
-
+/*
 #region MainGame
 
 Console.WriteLine("Wanna play a poker game? Y/N");
@@ -68,3 +70,4 @@ if (response == "Y")
 }
 
 #endregion
+*/

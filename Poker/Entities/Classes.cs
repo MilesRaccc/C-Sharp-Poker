@@ -1,9 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using Cards = System.Collections.Generic.List<Poker.Entities.Card>;
+//using Cards = System.Collections.Generic.List<Poker.Entities.Card>;
 using Bots = System.Collections.Generic.List<Poker.Entities.IPlayerAI>;
 
 namespace Poker.Entities
@@ -29,39 +30,84 @@ namespace Poker.Entities
     /// <param name="Value">Card Value</param>
     public record Card(Suit Suit, Value Value)
     {
-        public override string ToString() 
+        public static List<string> DrawCardBack()
         {
-            StringBuilder sb = new StringBuilder();
-            if((int)Value > 1 && (int)Value < 11)
+            return new List<string>
             {
-                sb.Append((int)Value);
-            }
-            else
-            {
-                sb.Append(Value.ToString());
-            }
+                "┌───────┐",
+                "│╬╬╬╬╬╬╬│",
+                "│╬░░░░░╬│",
+                "│╬░░░░░╬│",
+                "│╬░░░░░╬│",
+                "│╬╬╬╬╬╬╬│",
+                "└───────┘"
+            };
+        }
 
-            sb.Append(" of " + Suit.ToString());
+        public List<string> ConvertToString() 
+        {
+            char symbol = '_';
 
-            //switch (Suit)
+            //StringBuilder sb = new StringBuilder();
+            //if()
             //{
-            //    case Suit.Hearts:
-            //        sb.Append("♥");
-            //        break;
-            //    case Suit.Diamonds:
-            //        sb.Append("♦");
-            //        break;
-            //    case Suit.Clubs:
-            //        sb.Append("♣");
-            //        break;
-            //    case Suit.Spade:
-            //        sb.Append("♠");
-            //        break;
-            //    default:
-            //        break;
+            //    sb.Append((int)Value);
+            //}
+            //else
+            //{
+            //    sb.Append(Value.ToString());
             //}
 
-            return sb.ToString();
+            //sb.Append(" of " + Suit.ToString());
+
+            switch (Suit)
+            {
+                case Suit.Heart:
+                    symbol = '♥';
+                    break;
+                case Suit.Diamond:
+                    symbol = '♦';
+                    break;
+                case Suit.Club:
+                    symbol = '♣';
+                    break;
+                case Suit.Spade:
+                    symbol = '♠';
+                    break;
+                default:
+                    break;
+            }
+
+            
+            List<string> cardConsoleUI = new();
+            string value = "??";
+
+            switch (Value)
+            {
+                case Value.Jack:
+                    value = "J"; break;
+                case Value.Queen:
+                    value = "Q"; break;
+                case Value.King:
+                    value = "K"; break;
+                case Value.Ace:
+                    value = "A"; break;
+                default:
+                    value = ((int)Value).ToString();
+                    break;
+            }
+
+            cardConsoleUI.Add("┌───────┐");
+            cardConsoleUI.Add($"│{(Value == Value.Ten ? value : value + " ")}     │");
+            cardConsoleUI.Add("│       │");
+            cardConsoleUI.Add($"│   {symbol}   │");
+            cardConsoleUI.Add("│       │");
+            cardConsoleUI.Add($"│     {(Value == Value.Ten ? value : " " + value)}│");
+            cardConsoleUI.Add("└───────┘");
+
+            return cardConsoleUI;
+
+            //return sb.ToString();
         }
     }
 
@@ -86,12 +132,7 @@ namespace Poker.Entities
 
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
-            foreach (var card in cards) 
-            {
-                sb.Append(card.ToString() + "\n");
-            }
-            return sb.ToString();
+            return cards.ToString();
         }
 
         public int Count()
@@ -117,6 +158,178 @@ namespace Poker.Entities
         }
     }
 
+    public class Cards : IList<Card>
+    {
+        IList<Card> cards = [];
+
+        public IEnumerator<Card> GetEnumerator()
+        {
+            return cards.GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return this.GetEnumerator();
+        }
+
+        #region Implementation of ICollection<T>
+
+        public void Add(Card item)
+        {
+            cards.Add(item);
+        }
+
+        public void Clear()
+        {
+            cards.Clear();
+        }
+
+        public bool Contains(Card item)
+        {
+            return cards.Contains(item);
+        }
+
+        public void CopyTo(Card[] array, int arrayIndex)
+        {
+            cards.CopyTo(array, arrayIndex);
+        }
+
+        public bool Remove(Card item)
+        {
+            return cards.Remove(item);
+        }
+
+        public int Count
+        {
+            get { return cards.Count; }
+        }
+
+        public bool IsReadOnly
+        {
+            get { return cards.IsReadOnly; }
+        }
+
+        #endregion
+
+        #region Implementation of IList<T>
+
+        public int IndexOf(Card item)
+        {
+            return cards.IndexOf(item);
+        }
+
+        public void Insert(int index, Card item)
+        {
+            cards.Insert(index, item);
+        }
+
+        public void RemoveAt(int index)
+        {
+            cards.RemoveAt(index);
+        }
+
+        public void AddRange(IEnumerable<Card> newList)
+        {
+            if (cards == null)
+            {
+                throw new ArgumentNullException(nameof(cards));
+            }
+
+            ArgumentNullException.ThrowIfNull(newList);
+
+            if (cards is List<Card> concreteList)
+            {
+                concreteList.AddRange(newList);
+                return;
+            }
+
+            foreach (var element in newList)
+            {
+                if (element is Card card)
+                {
+                    cards.Add(card);
+                }
+            }
+        }
+
+        public Card this[int index]
+        {
+            get { return cards[index]; }
+            set { cards.Insert(index, value); }
+        }
+
+        public List<Card> GetCards()
+        {
+            return (List<Card>)(cards ?? new List<Card>());
+        }
+
+        #endregion
+
+        #region CustomConsoleOutput
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+
+            if (cards.Count > 8)
+            {
+                for (int i = 0; i < cards.Count; i += 4)
+                {
+                    List<string> consoleOutput = [];
+
+                    for (int j = i; j < i + 4; j++)
+                    {
+                        if (j == i)
+                        {
+                            consoleOutput = cards[j].ConvertToString();
+                        }
+                        else if (j < cards.Count)
+                        {
+                            var cardStrings = cards[j].ConvertToString();
+
+                            for (int k = 0; k < cardStrings.Count; k++)
+                            {
+                                consoleOutput[k] = consoleOutput[k].Replace(consoleOutput[k], consoleOutput[k] + " " + cardStrings[k]);
+                            }
+                        }
+
+
+                    }
+
+                    sb.Append(String.Join("\n", consoleOutput) + "\n");
+
+                }
+            }
+            else
+            {
+                List<string> consoleOutput = [];
+
+                for (int i = 0; i < cards.Count; i++)
+                {
+                    if (i == 0)
+                    {
+                        consoleOutput = cards[i].ConvertToString();
+                    }
+                    else
+                    {
+                        var cardStrings = cards[i].ConvertToString();
+
+                        for (int k = 0; k < cardStrings.Count; k++)
+                        {
+                            consoleOutput[k] = consoleOutput[k].Replace(consoleOutput[k], consoleOutput[k] + " " + cardStrings[k]);
+                        }
+                    }
+                }
+
+                sb.Append(String.Join("\n", consoleOutput) + "\n");
+            }
+
+            return sb.ToString();
+        }
+
+        #endregion
+    }
+
     /// <summary>
     /// A class representing current Table state
     /// </summary>
@@ -130,7 +343,6 @@ namespace Poker.Entities
         public int CurrentBet { get; set; } = 0;
         public int BetToCall { get; set; } = 0; // Сколько нужно заколлировать
         public int MinRaise { get; set; } = minRaise; // Минимальный рейз
-
         public int BigBlind { get; set; } = smallBlind * 2;
     }
 
